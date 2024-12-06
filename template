@@ -1,0 +1,64 @@
+# Template for Obsidian for Void Linux distribution.
+pkgname=obsidian
+version=1.7.7
+revision=1
+archs="x86_64"
+hostmakedepends="coreutils wget dpkg tar"
+makedepends="glibc libX11"
+short_desc="A powerful knowledge base that works on top of a local folder of plain text Markdown files."
+maintainer="kveld9 <kveld9@disroot.org>"
+license="custom:Commercial"
+homepage="https://github.com/obsidianmd/obsidian-releases"
+distfiles="https://github.com/obsidianmd/obsidian-releases/releases/download/v${version}/obsidian_${version}_amd64.deb"
+checksum="0e2dad7910368c527ecab3d56f64c960fe2e4e9310d9430e7bfe122503b53b6f"
+nopie=yes
+nostrip=yes
+
+wrksrc="${PWD}/build"
+DESTDIR="${PWD}/dest"
+
+do_fetch() {
+    mkdir -p "${wrksrc}"
+    cd "${wrksrc}"
+    wget -O "obsidian_${version}_amd64.deb" "${distfiles}"
+    if [ ! -f "obsidian_${version}_amd64.deb" ]; then
+        echo "Error: Download failed."
+        exit 1
+    fi
+}
+
+do_extract() {
+    mkdir -p "${wrksrc}/deb"
+    dpkg-deb -c "${wrksrc}/obsidian_${version}_amd64.deb"
+    dpkg-deb -x "${wrksrc}/obsidian_${version}_amd64.deb" "${wrksrc}/deb"
+    if [ ! -d "${wrksrc}/deb/opt/Obsidian" ]; then
+        echo "Error: Extraction failed or directory /opt/Obsidian does not exist."
+        exit 1
+    fi
+    ls -R "${wrksrc}/deb"
+}
+
+do_install() {
+    mkdir -p "${DESTDIR}/opt/Obsidian" "${DESTDIR}/usr/bin" "${DESTDIR}/usr/share/applications"
+    echo "Contents of ${wrksrc}/deb/opt/Obsidian:"
+    ls -l "${wrksrc}/deb/opt/Obsidian"
+    if [ ! -d "${wrksrc}/deb/opt/Obsidian" ]; then
+        echo "Error: ${wrksrc}/deb/opt/Obsidian directory does not exist."
+        exit 1
+    fi
+    cp -r "${wrksrc}/deb/opt/Obsidian/"* "${DESTDIR}/opt/Obsidian/"
+    if [ ! -f "${DESTDIR}/opt/Obsidian/obsidian" ]; then
+        echo "Error: /opt/Obsidian/obsidian not found."
+        exit 1
+    fi
+    if [ -L "${DESTDIR}/usr/bin/obsidian" ]; then
+        rm -f "${DESTDIR}/usr/bin/obsidian"
+    fi
+    ln -sf "/opt/Obsidian/obsidian" "${DESTDIR}/usr/bin/obsidian"
+    if [ ! -L "${DESTDIR}/usr/bin/obsidian" ]; then
+        echo "Error: Could not create symlink in /usr/bin/obsidian."
+        exit 1
+    fi
+    install -Dm644 ${FILESDIR}/obsidian.desktop "${DESTDIR}/usr/share/applications/obsidian.desktop"
+    echo "Installation completed successfully!"
+}
